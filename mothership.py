@@ -7,7 +7,7 @@ import bluetooth
 import threading
 import logging
 import BtConnector
-import SimpleHTTPServer
+import BaseHTTPServer
 import SocketServer
 
 def runbc(server_socket, bc):
@@ -25,12 +25,22 @@ def runbc(server_socket, bc):
     t.start();
 
 def runhttpd(port, bc):
-    class MyHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         def do_GET(self):
-            return bc.get_rcvinfo()
-    httpd = SocketServer.TCPServer(("127.0.0.1",port), MyHandler)
-    logging.debug("starting httpd server on port %d", port)
-    httpd.serve_forever()
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(bc.get_rcvinfo())
+    #httpd = SocketServer.TCPServer(("127.0.0.1",port), MyHandler)
+    server_class = BaseHTTPServer.HTTPServer
+    httpd = server_class(("127.0.0.1", port), MyHandler)
+    try:
+        logging.debug("starting httpd server on port %d", port)
+        httpd.serve_forever()
+    except Exception as e:
+        logging.error(e)
+        pass
+    httpd.server_close()
 
 if __name__ == '__main__':
     #主线程

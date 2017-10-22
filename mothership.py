@@ -17,7 +17,7 @@ if __name__ == '__main__':
     server_socket.bind(("",1))
     #监听端口/通道
     server_socket.listen(1);
-    bc = BtConnector()
+    bc = BtConnector.BtConnector()
     logging.basicConfig(filename='mothership.log',level=logging.DEBUG)
 
     #开死循环 等待客户端连接

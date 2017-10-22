@@ -13,6 +13,9 @@ class BtConnector:
         self._running = True
         logging.basicConfig(filename='mothership.log',level=logging.DEBUG)
 
+    def start(self):
+        self._running = True
+
     def terminate(self):
         self._running = False
 

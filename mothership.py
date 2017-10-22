@@ -29,6 +29,7 @@ if __name__ == '__main__':
         print(str(info[0])+' Connected!');
         logging.info(str(info[0])+' Connected!')
         #创建一个线程专门服务新来的连接(这本来应该搞个线程池来管理线程的)
+        bc.start()
         t=threading.Thread(target=bc.run,args=(sock,info[0]))
         #设置线程守护,防止程序在线程结束前结束
         t.setDaemon(True)

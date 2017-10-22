@@ -7,7 +7,30 @@ import bluetooth
 import threading
 import logging
 import BtConnector
+import SimpleHTTPServer
+import SocketServer
 
+def runbc(server_socket, bc):
+    #等待有人来连接,如果没人来,就阻塞线程等待(这本来要搞个会话池,以方便给不同的设备发送数据)
+    sock,info=server_socket.accept();
+    #打印有人来了的消息
+    print(str(info[0])+' Connected!');
+    logging.info(str(info[0])+' Connected!')
+    #创建一个线程专门服务新来的连接(这本来应该搞个线程池来管理线程的)
+    bc.start()
+    t=threading.Thread(target=bc.run,args=(sock,info[0]))
+    #设置线程守护,防止程序在线程结束前结束
+    t.setDaemon(True)
+    #启动线程
+    t.start();
+
+def runhttpd(port, bc):
+    class MyHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+        def do_GET(self):
+            return bc.get_rcvinfo()
+    httpd = SocketServer.TCPServer(("127.0.0.1",port), MyHandler)
+    logging.debug("starting httpd server on port %d", port)
+    httpd.serve_forever()
 
 if __name__ == '__main__':
     #主线程
@@ -19,20 +42,20 @@ if __name__ == '__main__':
     server_socket.listen(1);
     bc = BtConnector.BtConnector()
     logging.basicConfig(filename='mothership.log',level=logging.DEBUG)
+    threads = []
 
     #开死循环 等待客户端连接
-    #本处应放在另外的子线程中
-    while True:
-        #等待有人来连接,如果没人来,就阻塞线程等待(这本来要搞个会话池,以方便给不同的设备发送数据)
-        sock,info=server_socket.accept();
-        #打印有人来了的消息
-        print(str(info[0])+' Connected!');
-        logging.info(str(info[0])+' Connected!')
-        #创建一个线程专门服务新来的连接(这本来应该搞个线程池来管理线程的)
-        bc.start()
-        t=threading.Thread(target=bc.run,args=(sock,info[0]))
-        #设置线程守护,防止程序在线程结束前结束
-        t.setDaemon(True)
-        #启动线程
+    bt=threading.Thread(target=runbc, args=(server_socket, bc))
+    threads.append(bt)
+    bt.setDaemon(True)
+
+    port = 7600
+    ht=threading.Thread(target=runhttpd, args=(port,bc))
+    threads.append(ht)
+    bt.setDaemon(True)
+
+    for t in threads:
         t.start();
+        t.join();
+
 

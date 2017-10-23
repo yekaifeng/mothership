@@ -11,18 +11,26 @@ import BaseHTTPServer
 import SocketServer
 
 def runbc(server_socket, bc):
-    #等待有人来连接,如果没人来,就阻塞线程等待(这本来要搞个会话池,以方便给不同的设备发送数据)
-    sock,info=server_socket.accept();
-    #打印有人来了的消息
-    print(str(info[0])+' Connected!');
-    logging.info(str(info[0])+' Connected!')
-    #创建一个线程专门服务新来的连接(这本来应该搞个线程池来管理线程的)
-    bc.start()
-    t=threading.Thread(target=bc.run,args=(sock,info[0]))
-    #设置线程守护,防止程序在线程结束前结束
-    t.setDaemon(True)
-    #启动线程
-    t.start();
+    running = True
+    while running:
+        try:
+            #等待有人来连接,如果没人来,就阻塞线程等待(这本来要搞个会话池,以方便给不同的设备发送数据)
+            sock,info=server_socket.accept();
+            #打印有人来了的消息
+            print(str(info[0])+' Connected!');
+            logging.info(str(info[0])+' Connected!')
+            #创建一个线程专门服务新来的连接(这本来应该搞个线程池来管理线程的)
+            bc.start()
+            t=threading.Thread(target=bc.run,args=(sock,info[0]))
+            #设置线程守护,防止程序在线程结束前结束
+            t.setDaemon(True)
+            #启动线程
+            t.start();
+            t.join()
+        except Exception as e:
+            logging.debug("server socket exception: %s", e)
+            print("server socket stopped: %s", e)
+            running = False
 
 def runhttpd(port, bc):
     class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -50,24 +58,25 @@ if __name__ == '__main__':
     server_socket.bind(("",1))
     #监听端口/通道
     server_socket.listen(1);
+    global bc
     bc = BtConnector.BtConnector()
     logging.basicConfig(filename='mothership.log',level=logging.DEBUG)
     threads = []
 
-    #开死循环 等待客户端连接
-    bt=threading.Thread(target=runbc, args=(server_socket, bc))
-    threads.append(bt)
-    bt.setDaemon(True)
-
     port = 7600
-    ht=threading.Thread(target=runhttpd, args=(port,bc))
+    ht = threading.Thread(target=runhttpd, args=(port, bc))
     threads.append(ht)
     ht.setDaemon(True)
+
+    #开死循环 等待客户端连接
+    bt = threading.Thread(target=runbc, args=(server_socket, bc))
+    threads.append(bt)
+    bt.setDaemon(True)
 
     try:
         for t in threads:
             t.start();
-            t.join();
+        t.join();
     except Exception as e:
         logging.debug(e)
         bt.exit()

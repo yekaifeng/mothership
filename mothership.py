@@ -62,10 +62,15 @@ if __name__ == '__main__':
     port = 7600
     ht=threading.Thread(target=runhttpd, args=(port,bc))
     threads.append(ht)
-    bt.setDaemon(True)
+    ht.setDaemon(True)
 
-    for t in threads:
-        t.start();
-        t.join();
+    try:
+        for t in threads:
+            t.start();
+            t.join();
+    except Exception as e:
+        logging.debug(e)
+        bt.exit()
+        ht.exit()
 
 
